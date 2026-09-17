@@ -4,3 +4,6 @@ venv/
 .env
 .pytest_cache/
 .vscode/
+
+scratch_*.py
+sql_app.db
