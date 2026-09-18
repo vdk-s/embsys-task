@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Task Management System</title>
+  <meta name="description" content="A professional Jira-like Task Management System built with FastAPI, SQLite, and vanilla HTML/CSS/JS." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Sidebar ────────────────────────────────────────── -->
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-name">⚡ TaskFlow</div>
+      <div class="brand-sub">Task Management</div>
+    </div>
+
+    <div class="sidebar-section">Navigation</div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" id="nav-dashboard">
+        <span class="icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" id="nav-all" onclick="filterByStatus('')">
+        <span class="icon">📋</span> All Tasks
+      </div>
+      <div class="nav-item" id="nav-todo" onclick="filterByStatus('To Do')">
+        <span class="icon">🔲</span> To Do
+      </div>
+      <div class="nav-item" id="nav-inprog" onclick="filterByStatus('In Progress')">
+        <span class="icon">🔄</span> In Progress
+      </div>
+      <div class="nav-item" id="nav-done" onclick="filterByStatus('Done')">
+        <span class="icon">✅</span> Done
+      </div>
+    </nav>
+
+    <div class="sidebar-section">Team Members</div>
+    <div class="sidebar-team" id="sidebar-team">
+      <!-- Populated by JS -->
+    </div>
+  </aside>
+
+  <!-- ── Main Content ────────────────────────────────────── -->
+  <main id="main-content">
+
+    <!-- Top bar -->
+    <header id="topbar">
+      <h1 class="topbar-title" id="topbar-title">Dashboard</h1>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" id="btn-new-task" onclick="openCreateModal()">
+          <span>＋</span> New Task
+        </button>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <div id="page-content">
+
+      <!-- Stats row -->
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card total">
+          <div class="stat-label">Total Tasks</div>
+          <div class="stat-value" id="stat-total">—</div>
+        </div>
+        <div class="stat-card todo">
+          <div class="stat-label">To Do</div>
+          <div class="stat-value" id="stat-todo">—</div>
+        </div>
+        <div class="stat-card inprog">
+          <div class="stat-label">In Progress</div>
+          <div class="stat-value" id="stat-inprog">—</div>
+        </div>
+        <div class="stat-card done">
+          <div class="stat-label">Done</div>
+          <div class="stat-value" id="stat-done">—</div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="search" class="search-input" id="search-input"
+                 placeholder="Search tasks by title or description…"
+                 oninput="applyFilters()" />
+        </div>
+        <select id="filter-status" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="To Do">To Do</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Done">Done</option>
+        </select>
+        <select id="filter-priority" onchange="applyFilters()">
+          <option value="">All Priorities</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+        <select id="filter-assignee" onchange="applyFilters()">
+          <option value="">All Members</option>
+        </select>
+      </div>
+
+      <!-- Task table -->
+      <div class="table-wrap">
+        <table id="task-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('title')">Title <span class="sort-icon" id="sort-title"></span></th>
+              <th onclick="sortTable('status')">Status <span class="sort-icon" id="sort-status"></span></th>
+              <th onclick="sortTable('priority')">Priority <span class="sort-icon" id="sort-priority"></span></th>
+              <th onclick="sortTable('assigned_to')">Assignee <span class="sort-icon" id="sort-assigned_to"></span></th>
+              <th onclick="sortTable('created_at')">Created <span class="sort-icon" id="sort-created_at"></span></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="task-tbody">
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <div class="empty-icon">⏳</div>
+                  <p>Loading tasks…</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /page-content -->
+  </main>
+
+  <!-- ── Create / Edit Modal ─────────────────────────────── -->
+  <div class="modal-backdrop" id="task-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title-text">New Task</span>
+        <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+      </div>
+
+      <form id="task-form" onsubmit="submitTask(event)">
+        <input type="hidden" id="task-id" value="" />
+
+        <div class="form-group">
+          <label class="form-label" for="field-title">
+            Title <span class="form-required">*</span>
+          </label>
+          <input type="text" id="field-title" placeholder="Enter task title" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="field-desc">Description</label>
+          <textarea id="field-desc" placeholder="Optional description…"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="field-status">Status</label>
+            <select id="field-status">
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="field-priority">Priority</label>
+            <select id="field-priority">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="field-assignee">Assigned To</label>
+          <select id="field-assignee">
+            <option value="">— Unassigned —</option>
+          </select>
+        </div>
+
+        <div class="form-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="modal-submit-btn">Create Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Delete Confirm Modal ────────────────────────────── -->
+  <div class="modal-backdrop" id="delete-modal">
+    <div class="modal" style="max-width:400px" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <span class="modal-title">Delete Task</span>
+        <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+      </div>
+      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5">
+        Are you sure you want to delete
+        <strong id="delete-task-name" style="color:var(--text-primary)"></strong>?
+        This action cannot be undone.
+      </p>
+      <div class="form-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">
+          Delete Task
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast container ────────────────────────────────── -->
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

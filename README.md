@@ -1,6 +1,6 @@
-# Task Management API
+# Task Management System
 
-A RESTful CRUD Task Management API built with FastAPI, SQLAlchemy, and SQLite. The project includes automated tests, Docker support, and a GitHub Actions CI/CD pipeline that publishes to GitHub Container Registry (GHCR).
+A Jira-like Task Management System built with FastAPI, SQLAlchemy, SQLite, and a vanilla HTML/CSS/JS frontend. The project includes automated tests, Docker support, and a GitHub Actions CI/CD pipeline that publishes to GitHub Container Registry (GHCR).
 
 ---
 
@@ -13,6 +13,7 @@ A RESTful CRUD Task Management API built with FastAPI, SQLAlchemy, and SQLite. T
 | SQLAlchemy | ORM and database access |
 | Pydantic v2 | Request/response validation and serialization |
 | SQLite | Persistent data storage |
+| Vanilla HTML/CSS/JS | Frontend (no framework) |
 | Pytest | Automated testing |
 | Docker | Containerization |
 | Docker Compose | Local container orchestration |
@@ -27,14 +28,18 @@ A RESTful CRUD Task Management API built with FastAPI, SQLAlchemy, and SQLite. T
 embsys-task/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py          # FastAPI app, route definitions
-│   ├── crud.py          # Database CRUD operations
+│   ├── main.py          # FastAPI app, route definitions, SQLite migration
+│   ├── crud.py          # Database CRUD operations + simulated employees
 │   ├── models.py        # SQLAlchemy ORM models
 │   ├── schemas.py       # Pydantic request/response schemas
 │   └── database.py      # Database engine and session setup
+├── frontend/
+│   ├── index.html       # Dashboard — served at http://localhost:8000/
+│   ├── style.css        # Professional dark theme stylesheet
+│   └── app.js           # Vanilla JS — fetch calls, filters, modals
 ├── tests/
 │   ├── __init__.py
-│   └── test_tasks.py    # Pytest unit tests
+│   └── test_tasks.py    # Pytest unit tests (16 tests)
 ├── .github/
 │   └── workflows/
 │       └── ci-cd.yml    # GitHub Actions CI/CD workflow
@@ -47,12 +52,92 @@ embsys-task/
 
 ---
 
+## Frontend
+
+The frontend is a single-page dashboard served directly by FastAPI at `http://localhost:8000/`.
+
+**Features:**
+- **Dashboard** with live statistics (total, to-do, in-progress, done)
+- **Task table** with status badges, priority indicators, and assignee avatars
+- **Create Task** modal with all fields
+- **Edit Task** modal (pre-filled with current values)
+- **Delete Task** with confirmation dialog
+- **Real-time search** by title and description
+- **Filters** by status, priority, and team member
+- **Sortable columns** (click any column header)
+- **Toast notifications** for create/edit/delete actions
+- Responsive layout — works on desktop and tablet
+
+**How to access the frontend:**
+```
+http://localhost:8000/
+```
+
+---
+
+## Simulated Team Members
+
+Five demo team members are built into the application for demonstration purposes. They are returned by the `GET /employees` endpoint and available in all task assignment dropdowns.
+
+| ID | Name |
+|---|---|
+| 1 | Arun |
+| 2 | Priya |
+| 3 | Karthik |
+| 4 | Rahul |
+| 5 | Sneha |
+
+These are demo/simulated members only — they are not stored in the database.
+
+---
+
+## Task Assignment
+
+Tasks can be assigned to a team member via the `assigned_to` field:
+
+```json
+{
+  "title": "Implement Backend API",
+  "description": "Build the REST endpoints",
+  "status": "In Progress",
+  "priority": "High",
+  "assigned_to": "Arun"
+}
+```
+
+---
+
+## Task Status
+
+Each task supports one of three statuses:
+
+| Status | Description |
+|---|---|
+| `To Do` | Default — not started |
+| `In Progress` | Actively being worked on |
+| `Done` | Completed |
+
+---
+
+## Task Priority
+
+Each task supports one of three priority levels:
+
+| Priority | Description |
+|---|---|
+| `Low` | Nice-to-have or low urgency |
+| `Medium` | Default — normal priority |
+| `High` | Urgent or blocking |
+
+---
+
 ## API Endpoints
 
 Interactive Swagger documentation is available at **`/docs`** when the application is running.
 
 | Method | Path | Purpose | Success Status | Error Status |
 |---|---|---|---|---|
+| `GET` | `/employees` | List all simulated team members | `200 OK` | — |
 | `POST` | `/tasks` | Create a new task | `201 Created` | `422 Unprocessable Entity` |
 | `GET` | `/tasks` | Retrieve all tasks | `200 OK` | — |
 | `GET` | `/tasks/{task_id}` | Retrieve a single task by ID | `200 OK` | `404 Not Found` |
@@ -64,6 +149,9 @@ Interactive Swagger documentation is available at **`/docs`** when the applicati
 {
   "title": "Write documentation",
   "description": "Update the project README",
+  "status": "To Do",
+  "priority": "Medium",
+  "assigned_to": "Priya",
   "completed": false
 }
 ```
@@ -75,7 +163,10 @@ Interactive Swagger documentation is available at **`/docs`** when the applicati
   "title": "Write documentation",
   "description": "Update the project README",
   "completed": false,
-  "created_at": "2026-09-17T10:00:00.000000"
+  "status": "To Do",
+  "priority": "Medium",
+  "assigned_to": "Priya",
+  "created_at": "2026-09-18T10:00:00.000000"
 }
 ```
 
@@ -85,9 +176,13 @@ Interactive Swagger documentation is available at **`/docs`** when the applicati
 
 Validation is handled by Pydantic v2 schemas defined in `app/schemas.py`:
 
-- **`POST /tasks`** — `title` (string) is **required**. `description` (string) is optional and defaults to `null`. `completed` (boolean) is optional and defaults to `false`. Submitting a request without `title` returns `422 Unprocessable Entity`.
-- **`PUT /tasks/{task_id}`** — All fields (`title`, `description`, `completed`) are optional, allowing partial updates. Only provided fields are applied.
-- All responses include `id` (integer) and `created_at` (datetime) fields generated by the database.
+- **`title`** — required string
+- **`description`** — optional string, defaults to `null`
+- **`completed`** — optional boolean, defaults to `false`
+- **`status`** — optional, must be `"To Do"`, `"In Progress"`, or `"Done"`. Defaults to `"To Do"`. Invalid values return `422`.
+- **`priority`** — optional, must be `"Low"`, `"Medium"`, or `"High"`. Defaults to `"Medium"`. Invalid values return `422`.
+- **`assigned_to`** — optional string (team member name), defaults to `null`
+- **`PUT /tasks/{task_id}`** — all fields are optional, allowing partial updates
 
 ---
 
@@ -95,9 +190,9 @@ Validation is handled by Pydantic v2 schemas defined in `app/schemas.py`:
 
 The test suite is located in `tests/test_tasks.py` and uses Pytest with FastAPI's `TestClient`. Tests run against a dedicated in-memory SQLite database — the production `sql_app.db` is never touched.
 
-**Tests are isolated**: each test creates and drops its own database tables, ensuring independence between test cases.
+**Tests are isolated**: each test creates and drops its own database tables.
 
-**Coverage:**
+**Coverage (16 tests, all passing):**
 
 | Test | Scenario |
 |---|---|
@@ -109,8 +204,16 @@ The test suite is located in `tests/test_tasks.py` and uses Pytest with FastAPI'
 | `test_delete_existing_task` | `DELETE /tasks/{task_id}` returns `200` and verifies deletion |
 | `test_delete_invalid_task` | `DELETE /tasks/999` returns `404` |
 | `test_create_task_invalid_validation` | `POST /tasks` without `title` returns `422` |
+| `test_create_task_with_status_priority_assignee` | POST with all new fields returns them correctly |
+| `test_create_task_default_status_and_priority` | POST without new fields uses correct defaults |
+| `test_update_task_status` | PUT can change status independently |
+| `test_update_task_priority` | PUT can change priority independently |
+| `test_update_task_assigned_to` | PUT can assign and reassign a team member |
+| `test_get_employees` | `GET /employees` returns all 5 team members with correct structure |
+| `test_invalid_status_rejected` | Invalid status value returns `422` |
+| `test_invalid_priority_rejected` | Invalid priority value returns `422` |
 
-**Verified result: 8/8 tests pass.**
+**Verified result: 16/16 tests pass.**
 
 ---
 
@@ -137,8 +240,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API is available at: `http://127.0.0.1:8000`  
-Swagger UI: `http://127.0.0.1:8000/docs`
+The application is available at:
+
+| URL | Purpose |
+|---|---|
+| `http://127.0.0.1:8000/` | **Frontend Dashboard** |
+| `http://127.0.0.1:8000/docs` | **Swagger UI (API docs)** |
+| `http://127.0.0.1:8000/employees` | Team members JSON |
+| `http://127.0.0.1:8000/tasks` | Tasks JSON |
 
 ### Run the test suite
 
@@ -157,8 +266,10 @@ Docker Compose builds the image, starts the container, and mounts the local `sql
 docker compose up --build -d
 ```
 
-- API: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
+| URL | Purpose |
+|---|---|
+| `http://localhost:8000/` | **Frontend Dashboard** |
+| `http://localhost:8000/docs` | **Swagger UI** |
 
 ```bash
 # Stop and remove the container
@@ -213,7 +324,7 @@ docker pull ghcr.io/vdk-s/embsys-task:latest
 
 ## Git Workflow
 
-The project is version-controlled with Git and hosted on GitHub. All development changes were committed directly to the `main` branch. CI/CD is triggered automatically by GitHub Actions on each push.
+The project is version-controlled with Git and hosted on GitHub. CI/CD is triggered automatically by GitHub Actions on each push.
 
 ---
 
@@ -221,11 +332,17 @@ The project is version-controlled with Git and hosted on GitHub. All development
 
 | Requirement | Status |
 |---|---|
-| CRUD REST API (FastAPI) | Complete |
-| Database persistence (SQLite + SQLAlchemy) | Complete |
-| Request/response validation (Pydantic v2) | Complete |
-| Automated unit tests (Pytest, 8/8 passing) | Complete |
-| Docker containerisation | Complete |
-| Docker Compose | Complete |
-| GitHub Actions CI/CD pipeline | Complete |
-| Docker image published to GHCR | Complete |
+| CRUD REST API (FastAPI) | ✅ Complete |
+| Database persistence (SQLite + SQLAlchemy) | ✅ Complete |
+| Request/response validation (Pydantic v2) | ✅ Complete |
+| Automated unit tests (Pytest, 16/16 passing) | ✅ Complete |
+| Docker containerisation | ✅ Complete |
+| Docker Compose | ✅ Complete |
+| GitHub Actions CI/CD pipeline | ✅ Complete |
+| Docker image published to GHCR | ✅ Complete |
+| Frontend (vanilla HTML/CSS/JS dashboard) | ✅ Complete |
+| Task status (To Do / In Progress / Done) | ✅ Complete |
+| Task priority (Low / Medium / High) | ✅ Complete |
+| Task assignment (assigned_to field) | ✅ Complete |
+| Simulated team members (`GET /employees`) | ✅ Complete |
+| Safe SQLite migration (PRAGMA table_info) | ✅ Complete |
