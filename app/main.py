@@ -26,9 +26,8 @@ app.add_middleware(
 
 def run_migrations():
     """
-    Safe SQLite migration: check PRAGMA table_info to discover existing columns,
-    then issue ALTER TABLE ... ADD COLUMN only for columns that are missing.
-    Does NOT use 'ADD COLUMN IF NOT EXISTS' (not supported by all SQLite versions).
+    Safe SQLite and PostgreSQL migration: check existing columns,
+    then add columns if missing (status, priority, assigned_to).
     """
     new_columns = {
         "status": "VARCHAR DEFAULT 'To Do'",
@@ -36,17 +35,30 @@ def run_migrations():
         "assigned_to": "VARCHAR",
     }
 
-    with engine.connect() as conn:
-        # Fetch existing column names from the tasks table
-        result = conn.execute(text("PRAGMA table_info(tasks)"))
-        existing_columns = {row[1] for row in result.fetchall()}
+    backend = engine.url.get_backend_name()
 
-        for col_name, col_def in new_columns.items():
-            if col_name not in existing_columns:
-                conn.execute(
-                    text(f"ALTER TABLE tasks ADD COLUMN {col_name} {col_def}")
-                )
+    try:
+        if backend == "sqlite":
+            with engine.connect() as conn:
+                result = conn.execute(text("PRAGMA table_info(tasks)"))
+                existing_columns = {row[1] for row in result.fetchall()}
+
+                for col_name, col_def in new_columns.items():
+                    if col_name not in existing_columns:
+                        conn.execute(
+                            text(f"ALTER TABLE tasks ADD COLUMN {col_name} {col_def}")
+                        )
+                        conn.commit()
+        elif backend == "postgresql":
+            with engine.connect() as conn:
+                for col_name, col_def in new_columns.items():
+                    conn.execute(
+                        text(f"ALTER TABLE tasks ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
+                    )
                 conn.commit()
+    except Exception as e:
+        # Log note but don't fail startup if columns already exist or table is fresh
+        print(f"Migration note: {e}")
 
 
 # Run migration at startup
