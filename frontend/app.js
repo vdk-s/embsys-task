@@ -17,23 +17,29 @@ let activeStatusFilter = '';
 let taskToDelete = null;
 
 // ── Avatar helpers ─────────────────────────────────────────
-const AVATAR_CLASSES = {
-  Arun: 'av-arun',
-  Priya: 'av-priya',
-  Karthik: 'av-karthik',
-  Rahul: 'av-rahul',
-  Sneha: 'av-sneha',
-};
+const AVATAR_PALETTE = ['#5865f2', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1'];
 
 function getInitials(name) {
   if (!name) return '?';
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const clean = name.replace(/\(.*?\)/g, '').trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+function getAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < (name || '').length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
 function avatarHtml(name) {
   if (!name) return '';
-  const cls = AVATAR_CLASSES[name] || 'av-default';
-  return `<span class="avatar ${cls}">${getInitials(name)}</span>`;
+  const color = getAvatarColor(name);
+  return `<span class="avatar" style="background:${color}">${getInitials(name)}</span>`;
 }
 
 // ── Status helpers ─────────────────────────────────────────
@@ -82,15 +88,81 @@ function showToast(message, type = 'info') {
 
 // ── API helpers ────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
   const res = await fetch(`${API}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Request failed');
   }
   return res.json();
+}
+
+
+// ── Team member management ─────────────────────────────────
+let memberToDelete = null;
+
+async function addMember() {
+  const input = document.getElementById('input-new-member');
+  const name = input.value.trim();
+  if (!name) {
+    showToast('Please enter a member name', 'error');
+    input.focus();
+    return;
+  }
+
+  const btn = document.getElementById('btn-add-member');
+  btn.disabled = true;
+
+  try {
+    await apiFetch('/employees', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    input.value = '';
+    showToast(`Added ${name} to team`, 'success');
+    await loadEmployees();
+  } catch (err) {
+    showToast('Failed to add member: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function openDeleteMemberModal(id, name) {
+  memberToDelete = { id, name };
+  document.getElementById('delete-member-name').textContent = name;
+  document.getElementById('delete-member-modal').classList.add('open');
+}
+
+function closeDeleteMemberModal() {
+  memberToDelete = null;
+  document.getElementById('delete-member-modal').classList.remove('open');
+}
+
+async function confirmDeleteMember() {
+  if (!memberToDelete) return;
+  const { id, name } = memberToDelete;
+  const btn = document.getElementById('confirm-delete-member-btn');
+  btn.disabled = true;
+  btn.textContent = 'Removing…';
+
+  try {
+    await apiFetch(`/employees/${id}`, { method: 'DELETE' });
+    showToast(`Removed ${name}`, 'success');
+    closeDeleteMemberModal();
+    await loadEmployees();
+  } catch (err) {
+    showToast('Failed to delete member: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Remove Member';
+  }
 }
 
 // ── Load employees ─────────────────────────────────────────
@@ -100,28 +172,55 @@ async function loadEmployees() {
 
     // Populate sidebar team list
     const sidebarTeam = document.getElementById('sidebar-team');
-    sidebarTeam.innerHTML = employees.map(e => `
-      <div class="team-member">
-        ${avatarHtml(e.name)}
-        <span>${e.name}</span>
-      </div>
-    `).join('');
+    if (employees.length === 0) {
+      sidebarTeam.innerHTML = `
+        <div style="font-size:0.78rem;color:var(--text-muted);padding:8px 6px;">
+          No team members yet.
+        </div>`;
+    } else {
+      sidebarTeam.innerHTML = employees.map(e => {
+        const isLeader = (e.role === 'Team Leader') || (e.name && e.name.toLowerCase().includes('team leader'));
+        const displayName = e.name.replace(/\s*\(Team Leader\)\s*/i, '').trim();
+        return `
+          <div class="team-member" data-id="${e.id}">
+            <div class="team-member-main">
+              ${avatarHtml(e.name)}
+              <span class="team-member-name" title="${escHtml(e.name)}">${escHtml(displayName)}</span>
+              ${isLeader ? '<span class="badge-leader" title="Team Leader">Lead</span>' : ''}
+            </div>
+            <button
+              class="btn-del-member"
+              onclick="openDeleteMemberModal(${e.id}, '${escHtml(e.name)}')"
+              title="Remove ${escHtml(e.name)}"
+              aria-label="Remove ${escHtml(e.name)}"
+            >✕</button>
+          </div>
+        `;
+      }).join('');
+    }
 
-    // Populate assignee dropdowns
+    // Preserve currently selected dropdown values
+    const currentFilter = document.getElementById('filter-assignee').value;
+    const currentAssignee = document.getElementById('field-assignee').value;
+
     const assigneeOptions = employees.map(e =>
-      `<option value="${e.name}">${e.name}</option>`
+      `<option value="${escHtml(e.name)}">${escHtml(e.name)}</option>`
     ).join('');
 
     document.getElementById('field-assignee').innerHTML =
       '<option value="">— Unassigned —</option>' + assigneeOptions;
+    if (currentAssignee) document.getElementById('field-assignee').value = currentAssignee;
 
     document.getElementById('filter-assignee').innerHTML =
       '<option value="">All Members</option>' + assigneeOptions;
+    if (currentFilter) document.getElementById('filter-assignee').value = currentFilter;
 
   } catch (e) {
     console.error('Failed to load employees:', e);
+    showToast('Failed to load team members: ' + e.message, 'error');
   }
 }
+
 
 // ── Load tasks ─────────────────────────────────────────────
 async function loadTasks() {
@@ -391,6 +490,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeModal();
     closeDeleteModal();
+    closeDeleteMemberModal();
   }
 });
 
@@ -401,6 +501,10 @@ document.getElementById('task-modal').addEventListener('click', e => {
 document.getElementById('delete-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('delete-modal')) closeDeleteModal();
 });
+document.getElementById('delete-member-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('delete-member-modal')) closeDeleteMemberModal();
+});
+
 
 // ── Dashboard nav click ────────────────────────────────────
 document.getElementById('nav-dashboard').addEventListener('click', () => {

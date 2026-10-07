@@ -37,6 +37,17 @@ class Task(TaskBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class Employee(BaseModel):
-    id: int
+class EmployeeBase(BaseModel):
     name: str
+    role: Optional[str] = None
+
+
+class EmployeeCreate(EmployeeBase):
+    pass
+
+
+class Employee(EmployeeBase):
+    id: int
+
+    # Pydantic v2 configuration to map from SQLAlchemy models
+    model_config = ConfigDict(from_attributes=True)

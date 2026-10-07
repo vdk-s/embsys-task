@@ -36,10 +36,29 @@
     </nav>
 
     <div class="sidebar-section">Team Members</div>
+    <div class="team-add-box">
+      <input
+        type="text"
+        id="input-new-member"
+        class="team-add-input"
+        placeholder="Add member name…"
+        aria-label="Add new team member"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();addMember();}"
+      />
+      <button
+        type="button"
+        id="btn-add-member"
+        class="team-add-btn"
+        onclick="addMember()"
+        title="Add team member"
+        aria-label="Add team member"
+      >＋</button>
+    </div>
     <div class="sidebar-team" id="sidebar-team">
       <!-- Populated by JS -->
     </div>
   </aside>
+
 
   <!-- ── Main Content ────────────────────────────────────── -->
   <main id="main-content">
@@ -208,6 +227,28 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Delete Member Confirm Modal ─────────────────────── -->
+  <div class="modal-backdrop" id="delete-member-modal">
+    <div class="modal" style="max-width:400px" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <span class="modal-title">Remove Team Member</span>
+        <button class="modal-close" onclick="closeDeleteMemberModal()" aria-label="Close">✕</button>
+      </div>
+      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5">
+        Are you sure you want to remove
+        <strong id="delete-member-name" style="color:var(--text-primary)"></strong>
+        from the team?
+      </p>
+      <div class="form-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteMemberModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete-member-btn" onclick="confirmDeleteMember()">
+          Remove Member
+        </button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- ── Toast container ────────────────────────────────── -->
   <div id="toast-container"></div>

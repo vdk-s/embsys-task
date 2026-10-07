@@ -139,26 +139,140 @@ body {
 .nav-item.active { background: rgba(56,139,253,0.15); color: var(--accent); font-weight: 500; }
 .nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
 
+/* ── Team Section in Sidebar ────────────────────────── */
+.team-add-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.team-add-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  padding: 6px 9px;
+  outline: none;
+  min-width: 0;
+  transition: border-color var(--transition);
+}
+
+.team-add-input:focus {
+  border-color: var(--accent);
+}
+
+.team-add-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), transform 0.1s ease;
+}
+
+.team-add-btn:hover {
+  background: var(--accent-dark);
+}
+
+.team-add-btn:active {
+  transform: scale(0.95);
+}
+
 .sidebar-team {
-  margin-top: 12px;
+  margin-top: 2px;
   padding: 0 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .team-member {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 6px 10px;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   color: var(--text-secondary);
+  transition: background var(--transition), color var(--transition);
+}
+
+.team-member:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.team-member-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.team-member-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.82rem;
+}
+
+.badge-leader {
+  background: rgba(210, 153, 34, 0.18);
+  color: #e3b341;
+  border: 1px solid rgba(210, 153, 34, 0.45);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.btn-del-member {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity var(--transition), color var(--transition), background var(--transition);
+  flex-shrink: 0;
+}
+
+.team-member:hover .btn-del-member {
+  opacity: 1;
+}
+
+.btn-del-member:hover {
+  color: var(--danger);
+  background: rgba(248, 81, 73, 0.18);
 }
 
 .avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.7rem;
@@ -167,13 +281,6 @@ body {
   flex-shrink: 0;
 }
 
-/* Avatar colors per member */
-.av-arun    { background: #5865f2; }
-.av-priya   { background: #e8445a; }
-.av-karthik { background: #f5a623; }
-.av-rahul   { background: #43b581; }
-.av-sneha   { background: #a259ff; }
-.av-default { background: var(--accent); }
 
 /* ── Top Bar ─────────────────────────────────────────── */
 #topbar {

@@ -16,3 +16,12 @@ class Task(Base):
     priority = Column(String, nullable=True, default="Medium", server_default="Medium")
     assigned_to = Column(String, nullable=True)
 
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    role = Column(String, nullable=True)
+
+

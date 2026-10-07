@@ -61,8 +61,19 @@ def run_migrations():
         print(f"Migration note: {e}")
 
 
-# Run migration at startup
+# Run migration and seeding at startup
 run_migrations()
+
+def seed_initial_data():
+    db = SessionLocal()
+    try:
+        crud.seed_employees_if_empty(db)
+    except Exception as e:
+        print(f"Seed note: {e}")
+    finally:
+        db.close()
+
+seed_initial_data()
 
 
 # Dependency to get the database session
@@ -79,9 +90,52 @@ def get_db():
 # ---------------------------------------------------------------------------
 
 @app.get("/employees", response_model=List[schemas.Employee])
-def get_employees():
-    """Return the list of simulated team members."""
-    return crud.get_employees()
+@app.get("/employees/", response_model=List[schemas.Employee], include_in_schema=False)
+def get_employees(db: Session = Depends(get_db)):
+    """Return the list of team members from the database."""
+    return crud.get_employees(db)
+
+
+@app.post("/employees", response_model=schemas.Employee, status_code=status.HTTP_201_CREATED)
+@app.post("/employees/", response_model=schemas.Employee, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+def create_employee(employee: schemas.EmployeeCreate, db: Session = Depends(get_db)):
+    """Add a new team member to the database."""
+    if not employee.name or not employee.name.strip():
+        raise HTTPException(status_code=422, detail="Employee name cannot be empty")
+    return crud.create_employee(db=db, employee=employee)
+
+
+@app.delete("/employees/{employee_id}", response_model=schemas.Employee)
+@app.delete("/employees/{employee_id}/", response_model=schemas.Employee, include_in_schema=False)
+def delete_employee(employee_id: int, db: Session = Depends(get_db)):
+    """Delete a team member by their ID."""
+    db_employee = crud.get_employee(db, employee_id=employee_id)
+    if db_employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    emp_data = schemas.Employee.model_validate(db_employee)
+    crud.delete_employee(db=db, db_employee=db_employee)
+    return emp_data
+
+
+# Alias endpoints for /members
+@app.get("/members", response_model=List[schemas.Employee], include_in_schema=False)
+@app.get("/members/", response_model=List[schemas.Employee], include_in_schema=False)
+def get_members(db: Session = Depends(get_db)):
+    return crud.get_employees(db)
+
+
+@app.post("/members", response_model=schemas.Employee, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+@app.post("/members/", response_model=schemas.Employee, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+def create_member(employee: schemas.EmployeeCreate, db: Session = Depends(get_db)):
+    return create_employee(employee=employee, db=db)
+
+
+@app.delete("/members/{member_id}", response_model=schemas.Employee, include_in_schema=False)
+@app.delete("/members/{member_id}/", response_model=schemas.Employee, include_in_schema=False)
+def delete_member(member_id: int, db: Session = Depends(get_db)):
+    return delete_employee(employee_id=member_id, db=db)
+
 
 
 # ---------------------------------------------------------------------------

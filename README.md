@@ -75,19 +75,19 @@ http://localhost:8000/
 
 ---
 
-## Simulated Team Members
+## Team Members & Management
 
-Five demo team members are built into the application for demonstration purposes. They are returned by the `GET /employees` endpoint and available in all task assignment dropdowns.
+The application stores team members in the database (PostgreSQL / SQLite). It comes pre-seeded with the default team:
 
-| ID | Name |
-|---|---|
-| 1 | Arun |
-| 2 | Priya |
-| 3 | Karthik |
-| 4 | Rahul |
-| 5 | Sneha |
+| ID | Name | Role |
+|---|---|---|
+| 1 | S Venkata Diwakar (Team Leader) | Team Leader |
+| 2 | T Sam Sherwin | Member |
+| 3 | R Saran | Member |
+| 4 | Sangeeth | Member |
+| 5 | Shijo | Member |
 
-These are demo/simulated members only — they are not stored in the database.
+Team members can be dynamically added and deleted through the UI or REST API (`POST /employees` and `DELETE /employees/{id}`).
 
 ---
 
@@ -101,9 +101,10 @@ Tasks can be assigned to a team member via the `assigned_to` field:
   "description": "Build the REST endpoints",
   "status": "In Progress",
   "priority": "High",
-  "assigned_to": "Arun"
+  "assigned_to": "S Venkata Diwakar (Team Leader)"
 }
 ```
+
 
 ---
 
@@ -137,12 +138,15 @@ Interactive Swagger documentation is available at **`/docs`** when the applicati
 
 | Method | Path | Purpose | Success Status | Error Status |
 |---|---|---|---|---|
-| `GET` | `/employees` | List all simulated team members | `200 OK` | — |
+| `GET` | `/employees` | List all team members | `200 OK` | — |
+| `POST` | `/employees` | Add a new team member | `201 Created` | `422 Unprocessable Entity` |
+| `DELETE` | `/employees/{id}` | Delete a team member by ID | `200 OK` | `404 Not Found` |
 | `POST` | `/tasks` | Create a new task | `201 Created` | `422 Unprocessable Entity` |
 | `GET` | `/tasks` | Retrieve all tasks | `200 OK` | — |
 | `GET` | `/tasks/{task_id}` | Retrieve a single task by ID | `200 OK` | `404 Not Found` |
 | `PUT` | `/tasks/{task_id}` | Update an existing task by ID | `200 OK` | `404 Not Found` |
 | `DELETE` | `/tasks/{task_id}` | Delete a task by ID | `200 OK` (returns deleted task) | `404 Not Found` |
+
 
 **Example request body for `POST /tasks`:**
 ```json

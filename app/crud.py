@@ -1,20 +1,53 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
-from typing import List
+from typing import List, Optional
 
-# Simulated team members — demo data only (no DB table needed)
-TEAM_MEMBERS: List[schemas.Employee] = [
-    schemas.Employee(id=1, name="Arun"),
-    schemas.Employee(id=2, name="Priya"),
-    schemas.Employee(id=3, name="Karthik"),
-    schemas.Employee(id=4, name="Rahul"),
-    schemas.Employee(id=5, name="Sneha"),
+# Initial team members seed data
+INITIAL_TEAM_MEMBERS = [
+    {"name": "S Venkata Diwakar (Team Leader)", "role": "Team Leader"},
+    {"name": "T Sam Sherwin", "role": "Member"},
+    {"name": "R Saran", "role": "Member"},
+    {"name": "Sangeeth", "role": "Member"},
+    {"name": "Shijo", "role": "Member"},
 ]
 
 
-def get_employees() -> List[schemas.Employee]:
-    """Return the list of simulated team members."""
-    return TEAM_MEMBERS
+def seed_employees_if_empty(db: Session) -> None:
+    """Seed the database with initial team members if the table is empty."""
+    count = db.query(models.Employee).count()
+    if count == 0:
+        for member in INITIAL_TEAM_MEMBERS:
+            db.add(models.Employee(**member))
+        db.commit()
+
+
+def get_employees(db: Session) -> List[models.Employee]:
+    """Return all team members from the database."""
+    return db.query(models.Employee).order_by(models.Employee.id.asc()).all()
+
+
+def get_employee(db: Session, employee_id: int) -> Optional[models.Employee]:
+    """Retrieve an employee by their ID."""
+    return db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+
+
+def create_employee(db: Session, employee: schemas.EmployeeCreate) -> models.Employee:
+    """Add a new employee to the database."""
+    db_employee = models.Employee(
+        name=employee.name.strip(),
+        role=employee.role.strip() if employee.role else None,
+    )
+    db.add(db_employee)
+    db.commit()
+    db.refresh(db_employee)
+    return db_employee
+
+
+def delete_employee(db: Session, db_employee: models.Employee) -> models.Employee:
+    """Delete an employee from the database."""
+    db.delete(db_employee)
+    db.commit()
+    return db_employee
 
 
 def get_task(db: Session, task_id: int):
