@@ -56,22 +56,15 @@ is_production = (
 
 raw_url = get_database_url()
 
-if is_production:
-    if not raw_url:
-        raise RuntimeError(
-            "Production/Vercel environment detected, but no database connection string was found. "
-            "Please ensure DATABASE_URL or POSTGRES_URL is configured in your Vercel project environment variables. "
-            "SQLite fallback is disallowed in production to prevent read-only filesystem errors."
-        )
-    if raw_url.startswith("sqlite"):
-        raise RuntimeError(
-            "Production/Vercel environment detected, but a SQLite database URL was provided. "
-            "Vercel serverless functions have a read-only filesystem; Neon PostgreSQL (DATABASE_URL) is required."
-        )
-else:
-    if not raw_url:
-        # Default to local SQLite for local development only
+if not raw_url:
+    if is_vercel:
+        # Fallback to writable /tmp directory on Vercel if DATABASE_URL is not set yet
+        print("WARNING: DATABASE_URL not set in Vercel. Using temporary SQLite at /tmp/sql_app.db. Configure DATABASE_URL in Vercel settings for Neon PostgreSQL.")
+        raw_url = "sqlite:////tmp/sql_app.db"
+    else:
+        # Default to local SQLite for local development
         raw_url = "sqlite:///./sql_app.db"
+
 
 # 4. Normalize PostgreSQL URL scheme for SQLAlchemy
 # SQLAlchemy 1.4+ deprecated postgres:// in favor of postgresql://
